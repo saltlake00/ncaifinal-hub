@@ -6,7 +6,8 @@ GitHub Pages가 이 폴더를 그대로 서빙한다. 작업 공간이 어느 �
 
     python export.py                          # origin/main 기준, gh로 보드를 새로 읽는다
     python export.py --ref origin/<브랜치>    # 병합 전 브랜치로 미리 보기
-    python export.py --repo <경로>            # 원본 저장소 (기본: 메인 NCAIFinal)
+    python export.py --repo <경로>            # 원본 저장소 (기본: 환경 변수 NCAIFINAL_REPO,
+                                              #  없으면 ~/Documents/UnityProject/NCAIFinal·E:/UnityProject/NCAIFinal 중 있는 것)
 
 push는 하지 않는다. 결과를 보고 사람이 커밋·push한다.
 공개본 규칙과 이유는 원본 Tools/dev-hub/README.md "도감 정리 원칙"에 있다.
