@@ -29,7 +29,11 @@ from PIL import Image
 HERE = os.path.dirname(os.path.abspath(__file__))
 IMG_DIR = os.path.join(HERE, "img")
 SRC_DIR = os.path.join(HERE, ".src")  # ref에서 꺼낸 원본 (git 제외)
-DEFAULT_REPO = os.path.join(os.path.expanduser("~"), "Documents", "UnityProject", "NCAIFinal")
+# 원본 저장소: 환경 변수 NCAIFINAL_REPO > PC마다 다른 기본 위치 중 있는 것
+REPO_CANDIDATES = [os.environ.get("NCAIFINAL_REPO", ""),
+                   os.path.join(os.path.expanduser("~"), "Documents", "UnityProject", "NCAIFinal"),
+                   r"E:\UnityProject\NCAIFinal"]
+DEFAULT_REPO = next((p for p in REPO_CANDIDATES if p and os.path.isdir(os.path.join(p, ".git"))), None)
 PATHS = ["Tools/dev-hub", "Docs", ".wf/issues", "Assets/Data"]  # 허브가 읽는 경로
 IMG_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 MAX_SIDE = 1280
@@ -153,6 +157,8 @@ def main():
     ap.add_argument("--offline", action="store_true", help="gh 호출 없이 직전 cache.json 사용")
     a = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
+    if not a.repo:
+        sys.exit("NCAIFinal 저장소를 찾지 못했다. --repo <경로> 또는 환경 변수 NCAIFINAL_REPO로 알려 준다.")
 
     git(a.repo, "fetch", "-q", "origin")
     sha = extract(a.repo, a.ref)
