@@ -43,7 +43,8 @@ QUALITY = 80
 # - 남이 그린 원본 그림 (예: 원화-칠보산도-….jpg)
 # - 외부 게임 의상을 참고한 폐기 시안 (체른풍 T포즈 v1~v6, 2026-10-07 사용자 요청)
 EXCLUDE = re.compile(r"(^|/)원화-|체른풍-Tpose/v[1-6]-")
-# 공개본에서 빼는 도감 버전 (이름 앞부분). 연속된 묶음은 이미지 없는 탭 하나로 바꿔 번호를 잇는다
+# 공개본에서 빼는 도감 버전 (이름 앞부분). 연속된 묶음은 이미지 없는 탭 하나로 바꾸고,
+# 뒤 탭 번호는 설계 버전(v7…)에 맞춘다 (number_by_design)
 HIDE_VERSIONS = ("체른풍 T포즈", "로아풍·검사풍", "호평 디자인 조사", "유료 아바타 기준", "키트 아바타 기준")
 CLOSED_NAME = "폐기 시안"
 CLOSED_SUMMARY = "외부 게임 의상을 참고해 만든 시안들이다. 채택하지 않았고 공개본에서는 뺐다."
@@ -91,7 +92,26 @@ def close_hidden(versions):
             run = []
         if v is not None:
             out.append(v)
-    return out
+    return number_by_design(out)
+
+
+VER_SUFFIX = re.compile(r"\s*·\s*v(\d+)(?:[–-]v?(\d+))?$")  # 이름 끝 설계 버전 "· v7", "· v8–v9"
+
+
+def number_by_design(versions):
+    """탭 번호를 이름 끝 설계 버전에 맞춘다. 폐기 묶음은 다음 설계 버전 앞 번호까지 차지하고(V3–6 → V7),
+    번호와 같아진 설계 버전 꼬리표는 이름에서 뺀다. 맞출 수 없으면 그대로 둔다."""
+    no = 1
+    for n, v in enumerate(versions):
+        nxt = VER_SUFFIX.search(versions[n + 1].get("name") or "") if n + 1 < len(versions) else None
+        m = VER_SUFFIX.search(v.get("name") or "")
+        if v.get("closed") and nxt and int(nxt.group(1)) > no:
+            v["span"] = int(nxt.group(1)) - no
+        elif m and int(m.group(1)) == no:
+            v["name"] = v["name"][:m.start()]
+            v["span"] = int(m.group(2) or m.group(1)) - no + 1
+        no += v.get("span", 1)
+    return versions
 
 
 class Exporter:
