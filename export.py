@@ -28,8 +28,12 @@ DEFAULT_SRC = os.path.join(os.path.expanduser("~"), "Documents", "UnityProject",
 IMG_EXT = (".png", ".jpg", ".jpeg", ".webp", ".gif")
 MAX_SIDE = 1280
 QUALITY = 80
-# 남이 그린 원본 그림은 공개본에 넣지 않는다 (예: 원화-칠보산도-….jpg)
-EXCLUDE = re.compile(r"(^|/)원화-")
+# 공개본에 넣지 않는 이미지
+# - 남이 그린 원본 그림 (예: 원화-칠보산도-….jpg)
+# - 외부 게임 의상을 참고한 폐기 시안 (체른풍 T포즈 v1~v6, 2026-10-07 사용자 요청)
+EXCLUDE = re.compile(r"(^|/)원화-|체른풍-Tpose/v[1-6]-")
+# 공개본에서 빼는 도감 버전 (이름 앞부분). 위 폐기 시안의 버전 탭이다
+HIDE_VERSIONS = ("체른풍 T포즈", "로아풍·검사풍", "호평 디자인 조사", "유료 아바타 기준", "키트 아바타 기준")
 
 
 def load_hub(src):
@@ -100,16 +104,26 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--src", default=DEFAULT_SRC, help="원본 작업 공간")
     ap.add_argument("--offline", action="store_true", help="gh 호출 없이 원본의 cache.json 사용")
+    ap.add_argument("--lab", help="도감 lab.json 대신 쓸 파일 (병합 전 수정본 확인용)")
     a = ap.parse_args()
     sys.stdout.reconfigure(encoding="utf-8")
 
     hub = load_hub(a.src)
+    if a.lab:
+        hub.LAB = os.path.abspath(a.lab)
     if a.offline:
         data = json.load(io.open(hub.CACHE, encoding="utf-8"))
     else:
         data = hub.fetch()
     model = hub.build(data)
     model["labMissing"] = []
+    hidden = 0
+    for ents in model["lab"].values():
+        for e in ents:
+            keep = [v for v in e.get("versions", []) if not (v.get("name") or "").startswith(HIDE_VERSIONS)]
+            hidden += len(e.get("versions", [])) - len(keep)
+            e["versions"] = keep
+    print(f"숨긴 도감 버전 {hidden}개")
 
     os.makedirs(IMG_DIR, exist_ok=True)
     ex = Exporter(hub)

@@ -5,4 +5,4 @@
 
 - 보기: https://saltlake00.github.io/ncaifinal-hub/
 - 갱신: `python export.py` → 결과 확인 → 파일 단위로 커밋·push
-- 이미지는 긴 변 1280px webp로 줄여 `img/`에 둡니다. 남이 그린 원본 그림(`원화-*`)은 넣지 않습니다.
+- 이미지는 긴 변 1280px webp로 줄여 `img/`에 둡니다. 남이 그린 원본 그림(`원화-*`)과 외부 게임 의상을 참고한 폐기 시안(`export.py`의 `EXCLUDE`·`HIDE_VERSIONS`)은 넣지 않습니다.
