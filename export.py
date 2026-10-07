@@ -112,7 +112,8 @@ class Exporter:
             self.skipped.append(("없음", rel))
         else:
             data = open(path, "rb").read()
-            name = hashlib.sha1(data).hexdigest()[:16] + ".webp"
+            stem = os.path.splitext(os.path.basename(path))[0]  # 화면 설명에 파일 이름이 보이므로 남긴다
+            name = f"{stem}-{hashlib.sha1(data).hexdigest()[:8]}.webp"
             dst = os.path.join(IMG_DIR, name)
             if not os.path.exists(dst):
                 im = Image.open(io.BytesIO(data))
