@@ -10,6 +10,9 @@ GitHub Pages가 이 폴더를 그대로 서빙한다. 작업 공간이 어느 �
                                               #  없으면 ~/Documents/UnityProject/NCAIFinal·E:/UnityProject/NCAIFinal 중 있는 것)
 
 push는 하지 않는다. 결과를 보고 사람이 커밋·push한다.
+비공개 저장소로 가는 링크(이슈·PR·커밋·보드)는 지우고, 문자열 속 이메일·로컬 경로·브랜치명은 가린다.
+마지막에 index.html을 검사해 남은 것이 있으면 종료 코드 1로 멈춘다.
+첫 화면을 Edge 헤드리스로 찍어 preview.webp(고정 주소, 블로그 카드용)로 덮어쓰고 <head>에 og 태그를 넣는다.
 공개본 규칙과 이유는 원본 Tools/dev-hub/README.md "도감 정리 원칙"에 있다.
 """
 import argparse
@@ -23,6 +26,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import tempfile
 import urllib.parse
 
 from PIL import Image
@@ -46,6 +50,23 @@ EXCLUDE = re.compile(r"(^|/)원화-|체른풍-Tpose/v[1-6]-")
 # 공개본에서 빼는 도감 버전 (이름 앞부분). 연속된 묶음은 이미지 없는 탭 하나로 바꾸고,
 # 뒤 탭 번호는 설계 버전(v7…)에 맞춘다 (number_by_design)
 HIDE_VERSIONS = ("체른풍 T포즈", "로아풍·검사풍", "호평 디자인 조사", "유료 아바타 기준", "키트 아바타 기준")
+PRIVATE = re.compile(r"^https?://github\.com/(?:orgs/)?KDNA-Gwangju-1\b")  # 원본 조직(비공개). 공개본에서는 404
+SITE = "https://saltlake00.github.io/ncaifinal-hub/"
+PREVIEW = "preview.webp"  # 고정 이름: 블로그 TIL 맨 위 카드가 SITE + PREVIEW를 하드코딩한다
+EDGES = [r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+         r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"]
+# 공개본 문자열에서 가리는 것: (패턴, 바꿀 글자). 이미지 경로(src·cover)에는 쓰지 않는다
+SCRUB = [
+    (re.compile(r"https://github\.com/KDNA-Gwangju-1/NCAIFinal/(?:issues|pull)/(\d+)\S*"), r"#\1"),
+    (re.compile(r"https?://github\.com/(?:orgs/)?KDNA-Gwangju-1\S*"), "(비공개 저장소)"),
+    (re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+"), "(메일 가림)"),
+    (re.compile(r"(?<![\w/])[A-Za-z]:[\\/](?:내 드라이브[\\/])?[^\s`'\")\]]*"), "(로컬 경로)"),
+    (re.compile(r"/c/Users/[^\s`'\")\]]*"), "(로컬 경로)"),
+    (re.compile(r"\b(?:feat|fix|chore|docs|tool|refactor|codex|claude)/[\w.-]+"), "(브랜치)"),
+]
+# 최종 검사: 비공개 조직 이름, 이메일, 로컬 경로(JSON 이스케이프·URL 인코딩 포함), 브랜치명
+AUDIT = re.compile(r"KDNA-Gwangju-1|[\w.+-]+(?:@|%40)[\w-]+\.[a-z]{2,}|(?<![\w/])[A-Za-z]:(?:\\\\|/|%2F)"
+                   r"|/c/Users/|\b(?:feat|fix|chore|docs|tool|refactor|codex|claude)/[\w.-]+")
 CLOSED_NAME = "폐기 시안"
 CLOSED_SUMMARY = "외부 게임 의상을 참고해 만든 시안들이다. 채택하지 않았고 공개본에서는 뺐다."
 
@@ -114,6 +135,63 @@ def number_by_design(versions):
     return versions
 
 
+def scrub(s):
+    for pat, rep in SCRUB:
+        s = pat.sub(rep, s)
+    return s
+
+
+def audit(html):
+    """공개하면 안 되는 문자열을 찾는다. (위치, 앞뒤 글자) 목록."""
+    return [(m.start(), html[max(0, m.start() - 40):m.end() + 20].replace("\n", " "))
+            for m in AUDIT.finditer(html)]
+
+
+def og_tags(html, model):
+    """<head>에 공유 미리보기(og) 태그를 넣는다."""
+    done = sum(i["status"] == "완료" for i in model["issues"])
+    desc = (f"Unity 1인 개발 마법 보스 러쉬의 개발 허브. 이슈 {len(model['issues'])}개 중 {done}개 완료, "
+            f"패치 {len(model.get('patches', []))}건, 내보낸 날 {model['fetched'][:10]}.")
+    tags = "".join(f'<meta property="{k}" content="{v}">\n' for k, v in [
+        ("og:type", "website"), ("og:title", "NCAIFinal 개발 허브"), ("og:description", desc),
+        ("og:image", SITE + PREVIEW), ("og:image:width", "640"), ("og:image:height", "400"), ("og:url", SITE)])
+    tags += f'<meta name="twitter:card" content="summary_large_image">\n<meta name="description" content="{desc}">\n'
+    return html.replace("</title>\n", "</title>\n" + tags, 1)
+
+
+def preview(index):
+    """index.html 첫 화면을 Edge 헤드리스로 찍어 preview.webp로 덮어쓴다. 실패하면 경고만 한다."""
+    edge = next((p for p in EDGES if os.path.isfile(p)), None)
+    if not edge:
+        return "경고: Edge가 없어 preview를 만들지 못했다(이전 파일을 둔다)"
+    prof = tempfile.mkdtemp(prefix="hub-preview-")  # 사용자 Edge 프로필과 분리. 경로에 한글이 없게 임시 폴더에 찍는다
+    tmp = os.path.join(prof, "shot.png")
+    url = "file:///" + index.replace("\\", "/")
+    size = 0
+    for _ in range(3):  # 새 프로필 첫 실행은 빈 화면(수 KB)이 찍힐 때가 있다
+        if os.path.exists(tmp):
+            os.remove(tmp)
+        try:
+            subprocess.run([edge, "--headless=new", "--disable-gpu", "--hide-scrollbars", "--no-first-run",
+                            "--no-default-browser-check", f"--user-data-dir={prof}", "--window-size=1280,800",
+                            "--virtual-time-budget=8000", f"--screenshot={tmp}", url],
+                           capture_output=True, timeout=120)  # stderr의 fallback_task_provider ERROR는 정상
+        except (OSError, subprocess.TimeoutExpired) as e:
+            return f"경고: preview 캡처 실패: {e}"
+        size = os.path.getsize(tmp) if os.path.isfile(tmp) else 0
+        if size > 30000:
+            break
+    else:
+        shutil.rmtree(prof, ignore_errors=True)
+        return f"경고: preview가 빈 화면으로 찍혔다({size} bytes, 이전 파일을 둔다)"
+    im = Image.open(tmp).convert("RGB")
+    im = im.resize((640, round(im.height * 640 / im.width)), Image.LANCZOS)
+    im.save(os.path.join(HERE, PREVIEW), "WEBP", quality=80, method=6)
+    im.close()
+    shutil.rmtree(prof, ignore_errors=True)
+    return f"preview: {PREVIEW} {im.width}x{im.height} {os.path.getsize(os.path.join(HERE, PREVIEW)) / 1e3:.0f}KB"
+
+
 class Exporter:
     def __init__(self, hub):
         self.hub = hub
@@ -162,12 +240,16 @@ class Exporter:
                     x = None  # 로컬 문서는 공개본에 없다
                 elif k == "docs" and isinstance(x, list):
                     x = [d for d in x if not (isinstance(d, list) and len(d) == 2 and self.local(d[1]))]
+                elif isinstance(x, str) and PRIVATE.match(x):
+                    x = None  # 이슈·PR·커밋·보드 링크. 템플릿은 없으면 링크 없이 그린다
                 else:
                     x = self.walk(x)
                 out[k] = x
             return out
         if isinstance(v, list):
             return [y for y in (self.walk(x) for x in v) if y is not None]
+        if isinstance(v, str):
+            return scrub(v)
         return v
 
 
@@ -184,6 +266,9 @@ def main():
     git(a.repo, "fetch", "-q", "origin")
     sha = extract(a.repo, a.ref)
     hub = load_hub(SRC_DIR)
+    # .src는 git archive라 이력이 없어 원본 저장소에서 읽는다. 패치 내역은 main에 들어간 것만이라
+    # --ref로 병합 전 브랜치를 미리 볼 때도 origin/main 기준이다(브랜치 커밋이 직접 커밋으로 섞이지 않게)
+    hub.GIT_DIR, hub.IMG_REF, hub.MAIN_REF = a.repo, sha, git(a.repo, "rev-parse", "origin/main", text=True).strip()
     os.makedirs(hub.OUT_DIR, exist_ok=True)
     if a.offline:
         data = json.load(io.open(hub.CACHE, encoding="utf-8"))
@@ -193,6 +278,7 @@ def main():
             json.dump(data, f, ensure_ascii=False)
     model = hub.build(data)
     model["labMissing"] = []
+    model["public"] = True
     for ents in model["lab"].values():
         for e in ents:
             e["versions"] = close_hidden(e.get("versions", []))
@@ -203,8 +289,10 @@ def main():
 
     tpl = io.open(os.path.join(SRC_DIR, "Tools", "dev-hub", "template.html"), encoding="utf-8").read()
     payload = json.dumps(model, ensure_ascii=False).replace("</", "<\\/")
-    with io.open(os.path.join(HERE, "index.html"), "w", encoding="utf-8") as f:
-        f.write(tpl.replace("/*__DATA__*/null", payload))
+    html = og_tags(tpl.replace("/*__DATA__*/null", payload), model)
+    index = os.path.join(HERE, "index.html")
+    with io.open(index, "w", encoding="utf-8") as f:
+        f.write(html)
 
     removed = 0
     for name in os.listdir(IMG_DIR):  # 이번에 안 쓴 이미지는 지운다 (이력에는 남는다)
@@ -216,6 +304,14 @@ def main():
           f"이미지 {len(ex.used)}장 {size / 1e6:.1f}MB, 지운 이미지 {removed})")
     for why, rel in ex.skipped:
         print(f"  건너뜀({why}): {rel}")
+    hits = audit(html)
+    if hits:
+        print(f"검사 실패: 공개하면 안 되는 문자열 {len(hits)}곳. 커밋하지 않는다.")
+        for pos, ctx in hits[:30]:
+            print(f"  {pos}: …{ctx}…")
+        sys.exit(1)
+    print("검사: 비공개 주소·이메일·로컬 경로·브랜치명 없음")
+    print(preview(index))
 
 
 if __name__ == "__main__":
