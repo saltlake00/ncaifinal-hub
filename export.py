@@ -50,6 +50,12 @@ EXCLUDE = re.compile(r"(^|/)원화-|체른풍-Tpose/v[1-6]-")
 # 공개본에서 빼는 도감 버전 (이름 앞부분). 연속된 묶음은 이미지 없는 탭 하나로 바꾸고,
 # 뒤 탭 번호는 설계 버전(v7…)에 맞춘다 (number_by_design)
 HIDE_VERSIONS = ("체른풍 T포즈", "로아풍·검사풍", "호평 디자인 조사", "유료 아바타 기준", "키트 아바타 기준")
+# 출처 표기가 필요한 이미지: (경로 패턴, 캡션에 붙일 글자). 붙인 것이 있으면 하단에 FOOT_CREDIT도 넣는다
+# - #196 센트럴파크 지도 캡처는 OpenStreetMap(ODbL) 데이터로 만들었다 (2026-10-12 사용자 요청)
+CREDITS = [(re.compile(r"(^|/)issues/196/캡처/0[1-4]-"), "© OpenStreetMap contributors (ODbL)")]
+FOOT_ANCHOR = "MIT License)</div>"
+FOOT_CREDIT = ('<br>센트럴파크 지도 이미지(#196) 데이터: © <a href="https://www.openstreetmap.org/copyright" '
+               'target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)')
 PRIVATE = re.compile(r"^https?://github\.com/(?:orgs/)?KDNA-Gwangju-1\b")  # 원본 조직(비공개). 공개본에서는 404
 SITE = "https://saltlake00.github.io/ncaifinal-hub/"
 PREVIEW = "preview.webp"  # 고정 이름: 블로그 TIL 맨 위 카드가 SITE + PREVIEW를 하드코딩한다
@@ -198,6 +204,11 @@ class Exporter:
         self.used = set()
         self.skipped = []
         self.cache = {}
+        self.credited = 0
+
+    def credit(self, url):
+        rel = urllib.parse.unquote(url).replace("\\", "/")
+        return next((t for p, t in CREDITS if p.search(rel)), None)
 
     def local(self, url):
         return isinstance(url, str) and url.startswith("../")
@@ -245,6 +256,11 @@ class Exporter:
                 else:
                     x = self.walk(x)
                 out[k] = x
+            c = self.credit(v["src"]) if self.local(v.get("src")) else None
+            if c:  # 캡션(name, 없으면 note)에 출처를 붙인다
+                key = "name" if "name" in out else "note"
+                out[key] = f"{out.get(key) or ''} · {c}".lstrip(" ·")
+                self.credited += 1
             return out
         if isinstance(v, list):
             return [y for y in (self.walk(x) for x in v) if y is not None]
@@ -288,6 +304,11 @@ def main():
     model = ex.walk(model)
 
     tpl = io.open(os.path.join(SRC_DIR, "Tools", "dev-hub", "template.html"), encoding="utf-8").read()
+    if ex.credited:
+        if tpl.count(FOOT_ANCHOR) != 1:
+            sys.exit(f"출처 표기 실패: 템플릿에서 하단 문구 '{FOOT_ANCHOR}'를 하나로 찾지 못했다")
+        tpl = tpl.replace(FOOT_ANCHOR, FOOT_ANCHOR[:-len("</div>")] + FOOT_CREDIT + "</div>")
+        print(f"출처 표기: 이미지 {ex.credited}곳 + 하단 1줄")
     payload = json.dumps(model, ensure_ascii=False).replace("</", "<\\/")
     html = og_tags(tpl.replace("/*__DATA__*/null", payload), model)
     index = os.path.join(HERE, "index.html")
