@@ -260,6 +260,7 @@ class Exporter:
             if c:  # 캡션(name, 없으면 note)에 출처를 붙인다
                 key = "name" if "name" in out else "note"
                 out[key] = f"{out.get(key) or ''} · {c}".lstrip(" ·")
+                out["credit"] = c
                 self.credited += 1
             return out
         if isinstance(v, list):
@@ -308,7 +309,13 @@ def main():
         if tpl.count(FOOT_ANCHOR) != 1:
             sys.exit(f"출처 표기 실패: 템플릿에서 하단 문구 '{FOOT_ANCHOR}'를 하나로 찾지 못했다")
         tpl = tpl.replace(FOOT_ANCHOR, FOOT_ANCHOR[:-len("</div>")] + FOOT_CREDIT + "</div>")
-        print(f"출처 표기: 이미지 {ex.credited}곳 + 하단 1줄")
+        # 출처가 붙은 캡션만 줄바꿈한다. 기본 갤러리의 한 줄 말줄임은 출처를 가린다.
+        caption = '<figcaption>${esc(m.name)}</figcaption>'
+        if tpl.count(caption) != 2 or tpl.count('</style>') != 1:
+            sys.exit('출처 표기 실패: 갤러리 캡션 또는 스타일 삽입 위치가 바뀌었다')
+        tpl = tpl.replace(caption, '<figcaption class="credited-${Boolean(m.credit)}">${esc(m.name)}</figcaption>')
+        tpl = tpl.replace('</style>', '.gal figcaption.credited-true{white-space:normal;overflow:visible;overflow-wrap:anywhere}\n</style>', 1)
+        print(f"출처 표기: 이미지 {ex.credited}곳(줄바꿈) + 하단 1줄")
     payload = json.dumps(model, ensure_ascii=False).replace("</", "<\\/")
     html = og_tags(tpl.replace("/*__DATA__*/null", payload), model)
     index = os.path.join(HERE, "index.html")
