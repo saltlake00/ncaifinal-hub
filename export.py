@@ -55,9 +55,10 @@ HIDE_VERSIONS = ("체른풍 T포즈", "로아풍·검사풍", "호평 디자인 
 # 출처 표기가 필요한 이미지: (경로 패턴, 캡션에 붙일 글자). 붙인 것이 있으면 하단에 FOOT_CREDIT도 넣는다
 # - #196 센트럴파크 지도 캡처는 OpenStreetMap(ODbL) 데이터로 만들었다 (2026-10-12 사용자 요청)
 #   30-도로-현재길은 OSM 길·물 원본을 그대로 그린 지도다 (2026-10-13 추가)
-CREDITS = [(re.compile(r"(^|/)issues/196/캡처/(0[1-4]|30)-"), "© OpenStreetMap contributors (ODbL)")]
+CREDITS = [(re.compile(r"(^|/)issues/196/캡처/(0[1-4]|30)-"), "© OpenStreetMap contributors (ODbL)"),
+           (re.compile(r"(^|/)issues/442/캡처/01-확장-범위-지도"), "© OpenStreetMap contributors (ODbL)")]  # OSM 가공 데이터로 그린 지도
 FOOT_ANCHOR = "MIT License)</div>"
-FOOT_CREDIT = ('<br>센트럴파크 지도 이미지(#196) 데이터: © <a href="https://www.openstreetmap.org/copyright" '
+FOOT_CREDIT = ('<br>센트럴파크 지도 이미지(#196·#442) 데이터: © <a href="https://www.openstreetmap.org/copyright" '
                'target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)')
 PRIVATE = re.compile(r"^https?://github\.com/(?:orgs/)?KDNA-Gwangju-1\b")  # 원본 조직(비공개). 공개본에서는 404
 SITE = "https://saltlake00.github.io/ncaifinal-hub/"
