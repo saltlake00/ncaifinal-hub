@@ -160,7 +160,7 @@ def audit(html):
 def og_tags(html, model):
     """<head>에 공유 미리보기(og) 태그를 넣는다."""
     done = sum(i["status"] == "완료" for i in model["issues"])
-    desc = (f"Unity 1인 개발 마법 보스 러쉬의 개발 허브. 이슈 {len(model['issues'])}개 중 {done}개 완료, "
+    desc = (f"Unity 1인 개발 Wild Arcana의 개발 허브. 이슈 {len(model['issues'])}개 중 {done}개 완료, "
             f"패치 {len(model.get('patches', []))}건, 내보낸 날 {model['fetched'][:10]}.")
     tags = "".join(f'<meta property="{k}" content="{v}">\n' for k, v in [
         ("og:type", "website"), ("og:title", "NCAIFinal 개발 허브"), ("og:description", desc),
