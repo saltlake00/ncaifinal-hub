@@ -8,7 +8,7 @@
 - 갱신: `python export.py` → 결과 확인 → 파일 단위로 커밋·push
   - 마지막에 index.html을 검사해 비공개 저장소 주소·이메일·로컬 경로·브랜치명이 남아 있으면 종료 코드 1로 멈춥니다(본문 속 이슈·PR 주소는 `#번호`로 바꾸고 나머지는 가림 글자로 바꿉니다).
   - 패치 내역은 항상 원본의 `origin/main` 기준입니다. `--ref`로 병합 전 브랜치를 내보내도 브랜치 커밋이 섞이지 않습니다.
-- 미리보기 썸네일: 내보낼 때마다 Edge 헤드리스로 첫 화면(1280×800)을 찍어 너비 640 webp로 `preview.webp`에 덮어씁니다. 주소는 https://saltlake00.github.io/ncaifinal-hub/preview.webp 로 고정이고 블로그 카드가 이 주소를 씁니다. `index.html`에는 같은 이미지를 가리키는 `og:` 태그가 들어갑니다. Edge가 없으면 경고만 하고 이전 파일을 둡니다.
+- 미리보기 썸네일: 내보낼 때마다 Chrome(없으면 Edge) 헤드리스로 첫 화면(1280×800)을 찍어 너비 640 webp로 `preview.webp`에 덮어씁니다. 주소는 https://saltlake00.github.io/ncaifinal-hub/preview.webp 로 고정이고 블로그 카드가 이 주소를 씁니다. `index.html`에는 같은 이미지를 가리키는 `og:` 태그가 들어갑니다. 둘 다 없으면 경고만 하고 이전 파일을 둡니다. Edge 157은 헤드리스로 띄우면 바로 꺼져서(2026-11-11) Chrome을 먼저 씁니다. 기술문서 도식(mmdc)도 같은 순서로 브라우저를 고릅니다.
 - #196 센트럴파크 지도 이미지 3장의 캡션과 페이지 하단에 © OpenStreetMap contributors (ODbL) 출처를 표시합니다. 출처가 붙은 캡션은 줄바꿈해 좁은 화면에서도 문구가 잘리지 않게 합니다. 하단 출처에서 OpenStreetMap 저작권 안내로 이동할 수 있습니다.
 - 이미지는 긴 변 1280px webp로 줄여 `img/`에 둡니다. 남이 그린 원본 그림(`원화-*`), 외부 게임 의상을 참고한 폐기 시안, 에셋 팩 원본 텍스처를 잘라 붙인 견본(`export.py`의 `EXCLUDE`·`HIDE_VERSIONS`)은 넣지 않습니다.
 

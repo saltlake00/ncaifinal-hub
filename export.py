@@ -12,7 +12,7 @@ GitHub Pages가 이 폴더를 그대로 서빙한다. 작업 공간이 어느 �
 push는 하지 않는다. 결과를 보고 사람이 커밋·push한다.
 비공개 저장소로 가는 링크(이슈·PR·커밋·보드)는 지우고, 문자열 속 이메일·로컬 경로·브랜치명은 가린다.
 마지막에 index.html을 검사해 남은 것이 있으면 종료 코드 1로 멈춘다.
-첫 화면을 Edge 헤드리스로 찍어 preview.webp(고정 주소, 블로그 카드용)로 덮어쓰고 <head>에 og 태그를 넣는다.
+첫 화면을 Chrome(없으면 Edge) 헤드리스로 찍어 preview.webp(고정 주소, 블로그 카드용)로 덮어쓰고 <head>에 og 태그를 넣는다.
 공개본 규칙과 이유는 원본 Tools/dev-hub/README.md "도감 정리 원칙"에 있다.
 """
 import argparse
@@ -63,7 +63,9 @@ FOOT_CREDIT = ('<br>센트럴파크 지도 이미지(#196·#442) 데이터: © <
 PRIVATE = re.compile(r"^https?://github\.com/(?:orgs/)?KDNA-Gwangju-1\b")  # 원본 조직(비공개). 공개본에서는 404
 SITE = "https://saltlake00.github.io/ncaifinal-hub/"
 PREVIEW = "preview.webp"  # 고정 이름: 블로그 TIL 맨 위 카드가 SITE + PREVIEW를 하드코딩한다
-EDGES = [r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+# Chrome을 먼저 쓴다. Edge 157은 헤드리스로 띄우면 바로 꺼져(종료 코드 0) 도식 25개와 preview가 모두 빠졌다(2026-11-11).
+EDGES = [r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+         r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
          r"C:\Program Files\Microsoft\Edge\Application\msedge.exe"]
 # 공개본 문자열에서 가리는 것: (패턴, 바꿀 글자). 이미지 경로(src·cover)에는 쓰지 않는다
 SCRUB = [
@@ -106,6 +108,7 @@ def load_hub(src):
     spec = importlib.util.spec_from_file_location("build_hub", path)
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
+    mod.BROWSERS = EDGES + [b for b in getattr(mod, "BROWSERS", []) if b not in EDGES]  # 도식 변환(mmdc)도 같은 순서로
     return mod
 
 
